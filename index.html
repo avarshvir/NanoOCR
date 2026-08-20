@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NanoOCR - Intelligent Text Extraction</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen flex flex-col items-center justify-center p-6">
+
+    <div class="max-w-xl w-full bg-white rounded-xl shadow-lg p-8 border border-gray-100">
+        <h1 class="text-3xl font-bold text-center mb-2 text-gray-900">NanoOCR</h1>
+        <p class="text-center text-gray-500 mb-8">Upload an image of printed text to extract it using our custom ONNX model.</p>
+
+        <!-- Upload Form -->
+        <form id="uploadForm" class="flex flex-col items-center gap-4">
+            <label class="w-full flex flex-col items-center px-4 py-6 bg-white text-blue-500 rounded-lg shadow-inner tracking-wide uppercase border-2 border-blue-400 border-dashed cursor-pointer hover:bg-blue-50 transition-colors">
+                <svg class="w-8 h-8" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                    <path d="M16.88 9.1A4 4 0 0 1 16 17H5a5 5 0 0 1-1-9.9V7a3 3 0 0 1 4.52-2.59A4.98 4.98 0 0 1 17 8c0 .38-.04.74-.12 1.1zM11 11h3l-4-4-4 4h3v3h2v-3z" />
+                </svg>
+                <span class="mt-2 text-base leading-normal font-medium">Select a file</span>
+                <input type='file' id="fileInput" class="hidden" accept="image/*" />
+            </label>
+
+            <button type="submit" class="w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors shadow-md">
+                Extract Text
+            </button>
+        </form>
+
+        <!-- Loading State -->
+        <div id="loading" class="hidden flex flex-col items-center mt-6">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <p class="text-sm text-gray-500 mt-2">Processing image via ONNX Runtime...</p>
+        </div>
+
+        <!-- Results Box -->
+        <div id="resultBox" class="hidden mt-8 p-6 bg-gray-50 rounded-lg border border-gray-200">
+            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Extracted Text</h3>
+            <p id="extractedText" class="text-2xl font-mono text-gray-800 break-all"></p>
+            <div class="mt-4 flex gap-4 text-sm text-gray-500">
+                <p>Characters detected: <span id="charCount" class="font-semibold text-gray-700">0</span></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('uploadForm');
+        const fileInput = document.getElementById('fileInput');
+        const loading = document.getElementById('loading');
+        const resultBox = document.getElementById('resultBox');
+        const extractedText = document.getElementById('extractedText');
+        const charCount = document.getElementById('charCount');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!fileInput.files[0]) {
+                alert("Please select an image first!");
+                return;
+            }
+
+            // UI Updates
+            resultBox.classList.add('hidden');
+            loading.classList.remove('hidden');
+
+            // Prepare the payload
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+
+            try {
+                // Call your FastAPI backend!
+                const response = await fetch('/read_document', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+
+                if (response.ok) {
+                    extractedText.textContent = data.extracted_text || "No text found.";
+                    charCount.textContent = data.characters_detected;
+                    resultBox.classList.remove('hidden');
+                } else {
+                    alert("Error: " + data.detail);
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Something went wrong connecting to the server.");
+            } finally {
+                loading.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
